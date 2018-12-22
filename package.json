@@ -7,7 +7,7 @@
     "test": "mocha test/"
   },
   "private": true,
-  "author": "",
+  "author": "Brian Mearns <mearns.b@gmail.com>",
   "license": "ISC",
   "devDependencies": {
     "chai": "4.2.0",
