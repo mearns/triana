@@ -8,12 +8,26 @@ function main () {
     .then(parseString)
 }
 
-function acceptMatch (type) {
-  return (ctx, match) => ctx.accept(type, match[0])
+function acceptMatch (type, number = 0) {
+  return (ctx, match) => ctx.accept(type, match[number])
 }
 
 function acceptWithOutValue (type) {
   return ctx => ctx.accept(type, undefined)
+}
+
+class TrianaSyntaxError extends SyntaxError {
+  constructor (message, token) {
+    const lex = token && (token.lex || token)
+    const specificMessage = lex
+      ? `${message}: at ${lex.line}:${lex.column}`
+      : message
+    super(specificMessage)
+    this.name = this.constructor.name
+    Error.captureStackTrace(this, this.constructor)
+    this.line = (lex || {}).line
+    this.column = (lex || {}).column
+  }
 }
 
 class RdfDatabase {
@@ -98,7 +112,7 @@ function unexpectedSymbol (symbol, context, _expectedIds) {
     : expectedIds.length === 2
       ? expectedIds.join(' or ')
       : [...expectedIds.slice(0, expectedIds.length - 1), 'or ' + expectedIds[expectedIds.length - 1]].join(', ')
-  return new SyntaxError(`Invalid ${context}: expected ${expected}, but found ${symbol} at ${symbol.lex.line}:${symbol.lex.column}`)
+  return new TrianaSyntaxError(`Invalid ${context}: expected ${expected}, but found ${symbol}`, symbol)
 }
 
 function handleBySymbolId (symbol, context, handlerMap) {
@@ -124,8 +138,11 @@ function addPropertyToIdentifier (database, firstTokenSymbol, identifier, proper
 
 function parseString (string) {
   const lex = new Tokenizer()
-    .rule(/[a-zA-Z0-9_@&-]+/, acceptMatch('identifier'))
+    .rule(/[a-zA-Z0-9_&-]+/, acceptMatch('identifier'))
+    .rule(/@([a-zA-Z0-9_&-]+)/, acceptMatch('variableName', 1))
+    .rule(/\*([a-zA-Z0-9_&-]+)/, acceptMatch('variableRef', 1))
     .rule(/\s*=>\s*/, acceptWithOutValue('ARROW'))
+    .rule(/\s*:=\s*/, acceptWithOutValue('ASSIGNMENT'))
     .rule(/\s*:\s*/, acceptWithOutValue('COLON'))
     .rule(/\s*!\s*/, acceptWithOutValue('BANG'))
     .rule(/\s*\(\s*/, acceptWithOutValue('OPAREN'))
@@ -135,6 +152,7 @@ function parseString (string) {
     .input(string)
 
   const database = new RdfDatabase()
+  const varTable = {}
 
   const parser = tokenParser(lex)
   ;['EOF', 'CPAREN'].forEach(sym => parser.symbol(sym))
@@ -157,8 +175,12 @@ function parseString (string) {
         entities: () => {
           const right = parser.expression(1)
           if (right) {
-            expectSymbol(right, 'entities', 'entities')
-            left.ids.push(...right.ids)
+            handleBySymbolId(right, 'entities', {
+              entities: () => {
+                left.ids.push(...right.ids)
+              },
+              assignment: () => {}
+            })
           }
           return left
         },
@@ -169,8 +191,28 @@ function parseString (string) {
             left.properties.push(...right.properties)
           }
           return left
+        },
+        assignment: () => {
+          const next = parser.peek()
+          if (next && (next.id === 'EOF' || next.id === 'CPAREN')) {
+            return
+          }
+          return parser.expression(0)
         }
       })
+    })
+  parser.symbol('ASSIGNMENT', 2)
+    .led(function (left) {
+      expectSymbol(left, 'assignment symbol', 'variableName')
+      const varName = left.value
+      if (varTable[varName]) {
+        throw new TrianaSyntaxError(`Variable is already defined: '${varName}'`, left)
+      }
+      const right = parser.expression(2)
+      expectSymbol(right, 'right hand side of assignment', 'entities', 'descriptor')
+      varTable[varName] = right
+      return parser.create('assignment', this)
+        .raw()
     })
   parser.symbol('OPAREN', 100)
     .nud(() => {
@@ -184,6 +226,18 @@ function parseString (string) {
       return parser.create('entities', this)
         .prop('ids', [ id ])
         .raw()
+    })
+  parser.symbol('variableName')
+    .nud(function () {
+      return this
+    })
+  parser.symbol('variableRef')
+    .nud(function () {
+      const value = varTable[this.value]
+      if (value) {
+        return value
+      }
+      throw new TrianaSyntaxError(`Variable is not defined: '${this.value}'`, this)
     })
   parser.symbol('ARROW', 50)
     .led(function (left) {
@@ -230,13 +284,13 @@ function parseString (string) {
     .led((left) => {
       expectSymbol(left, 'statement for labeling (bang) operator', 'descriptor')
       if (left.properties.length !== 1) {
-        throw new SyntaxError(`Statement labeling can only target a single property, found ${left.properties.length}`)
+        throw new TrianaSyntaxError(`Statement labeling can only target a single property, found ${left.properties.length}`, left)
       }
       const [targetProperty] = left.properties
       const right = parser.expression(60)
       expectSymbol(right, 'label for labeling (bang) operator', 'entities')
       if (right.ids.length !== 1) {
-        throw new SyntaxError(`Statement labeling can only use a single entity, found ${right.ids.length}`)
+        throw new TrianaSyntaxError(`Statement labeling can only use a single entity, found ${right.ids.length}`, right)
       }
       const [labelId] = right.ids
       targetProperty.statementId = labelId

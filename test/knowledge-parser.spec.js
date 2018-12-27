@@ -255,4 +255,75 @@ describe('knowledge-parser', () => {
       .and.to.deep.include(['user:l', 'stmt_reification:predicate', 'user:j'])
       .and.to.deep.include(['user:l', 'stmt_reification:object', 'user:k'])
   })
+
+  it('018.0 should support descrptors as variables', () => {
+    expect(`
+      @x := (a:b c:d)
+      y => (
+        *x
+        e:f
+      )
+    `).parsed.statements
+      .to.deep.include(['user:y', 'user:a', 'user:b'])
+      .to.deep.include(['user:y', 'user:c', 'user:d'])
+      .to.deep.include(['user:y', 'user:e', 'user:f'])
+  })
+
+  it('018.1 should support entities as variables', () => {
+    expect(`
+      @x := (a b c)
+      *x => d:e
+    `).parsed.statements
+      .to.deep.include(['user:a', 'user:d', 'user:e'])
+      .to.deep.include(['user:b', 'user:d', 'user:e'])
+      .to.deep.include(['user:c', 'user:d', 'user:e'])
+  })
+
+  it('018.2 should support statements about statements in variables', () => {
+    expect(`
+      @x := (
+        a:b => c:d
+        g:h
+      )
+      w => *x
+      y => m:n => *x
+    `).parsed.statements
+      .to.deep.include(['user:w', 'user:a', 'user:b']) // auto_expr:0
+      .to.deep.include(['auto_expr:0', 'user:c', 'user:d']) // auto_expr:1
+      .to.deep.include(['user:w', 'user:g', 'user:h']) // auto_expr:2
+      .to.deep.include(['user:y', 'user:m', 'user:n']) // auto_expr:3
+      .to.deep.include(['auto_expr:3', 'user:a', 'user:b']) // auto_expr:4
+      .to.deep.include(['auto_expr:4', 'user:c', 'user:d']) // auto_expr:5
+      .to.deep.include(['auto_expr:3', 'user:g', 'user:h']) // auto_expr:6
+  })
+
+  it('018.3 should support variables inside variables', () => {
+    expect(`
+      @x := a:b
+      @y := (c:d *x e:f)
+      w => *y
+    `).parsed.statements
+      .to.deep.include(['user:w', 'user:c', 'user:d']) // auto_expr:0
+      .to.deep.include(['user:w', 'user:a', 'user:b']) // auto_expr:1
+      .to.deep.include(['user:w', 'user:e', 'user:f']) // auto_expr:2
+  })
+
+  it('018.4 should support variables mixed with other statements', () => {
+    expect(`
+      a => b:c
+      @x := m:n
+      w => (*x o:p)
+      y => g:h
+    `).parsed.statements
+      .to.deep.include(['user:a', 'user:b', 'user:c']) // auto_expr:0
+      .to.deep.include(['user:w', 'user:m', 'user:n']) // auto_expr:1
+      .to.deep.include(['user:w', 'user:o', 'user:p']) // auto_expr:2
+      .to.deep.include(['user:y', 'user:g', 'user:h']) // auto_expr:3
+  })
+
+  it('018.5 should throw an SyntaxError if an assignment appears in a descriptor', () => {
+    expect(() => knowledgeParser.parseString(`
+      a => ( a:b @x:=y )
+    `)).to.throw(SyntaxError).which.has.property('message').that.matches(/Invalid descriptor.*found assignment: at 2:20$/)
+  })
 })
