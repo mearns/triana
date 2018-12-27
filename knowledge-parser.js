@@ -59,9 +59,10 @@ class RdfDatabase {
     }
     const reifBaseId = `_:auto_reify/${this._nextReifId}`
     this._nextReifId++
-    this._add(`${reifBaseId}.s`, id, 'stmt_reification:subject', subj, specified)
-    this._add(`${reifBaseId}.p`, id, 'stmt_reification:predicate', pred, specified)
-    this._add(`${reifBaseId}.o`, id, 'stmt_reification:object', obj, specified)
+    this._add(`${reifBaseId}.t`, id, 'rdf:type', 'rdf:Statement', specified)
+    this._add(`${reifBaseId}.s`, id, 'rdf:subject', subj, specified)
+    this._add(`${reifBaseId}.p`, id, 'rdf:predicate', pred, specified)
+    this._add(`${reifBaseId}.o`, id, 'rdf:object', obj, specified)
     return id
   }
 

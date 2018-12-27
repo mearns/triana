@@ -96,7 +96,7 @@ describe('knowledge-parser', () => {
       .and.to.deep.include(['_:auto_expr/0', '_:user/f', '_:user/g']) // _:auto_expr/1
       .and.to.deep.include(['_:user/a', '_:user/d', '_:user/e']) // _:auto_expr/2
       .and.to.deep.include(['_:auto_expr/2', '_:user/f', '_:user/g']) // _:auto_expr/3
-      .and.to.have.length(10) // includes 3 * 2 reification statements
+      .and.to.have.length(12) // includes 4 * 2 reification statements
   })
 
   it('006.6 should support cross product of descriptors with descriptors as citations', () => {
@@ -112,7 +112,7 @@ describe('knowledge-parser', () => {
       .and.to.deep.include(['_:user/a', '_:user/d', '_:user/e']) // _:auto_expr/3
       .and.to.deep.include(['_:auto_expr/3', '_:user/f', '_:user/g']) // _:auto_expr/4
       .and.to.deep.include(['_:auto_expr/3', '_:user/h', '_:user/i']) // _:auto_expr/5
-      .and.to.have.length(12) // include 3 * 2 auto-reification statements
+      .and.to.have.length(14) // include 4 * 2 auto-reification statements
   })
 
   it('007 It should support deeply nested descriptions of properties', () => {
@@ -192,9 +192,10 @@ describe('knowledge-parser', () => {
   it('012 should automatically reify statements that are cited', () => {
     expect(`a => c:d => e:f`).parsed.statements
       .to.deep.include(['_:user/a', '_:user/c', '_:user/d'])
-      .and.to.deep.include(['_:auto_expr/0', 'stmt_reification:subject', '_:user/a'])
-      .and.to.deep.include(['_:auto_expr/0', 'stmt_reification:predicate', '_:user/c'])
-      .and.to.deep.include(['_:auto_expr/0', 'stmt_reification:object', '_:user/d'])
+      .and.to.deep.include(['_:auto_expr/0', 'rdf:type', 'rdf:Statement'])
+      .and.to.deep.include(['_:auto_expr/0', 'rdf:subject', '_:user/a'])
+      .and.to.deep.include(['_:auto_expr/0', 'rdf:predicate', '_:user/c'])
+      .and.to.deep.include(['_:auto_expr/0', 'rdf:object', '_:user/d'])
       .and.to.deep.include(['_:auto_expr/0', '_:user/e', '_:user/f'])
   })
 
@@ -231,9 +232,9 @@ describe('knowledge-parser', () => {
   it('017.1 should support named expressions', () => {
     expect(`a => b : c ! d`).parsed.statements
       .to.deep.include(['_:user/a', '_:user/b', '_:user/c'])
-      .and.to.deep.include(['_:user/d', 'stmt_reification:subject', '_:user/a'])
-      .and.to.deep.include(['_:user/d', 'stmt_reification:predicate', '_:user/b'])
-      .and.to.deep.include(['_:user/d', 'stmt_reification:object', '_:user/c'])
+      .and.to.deep.include(['_:user/d', 'rdf:subject', '_:user/a'])
+      .and.to.deep.include(['_:user/d', 'rdf:predicate', '_:user/b'])
+      .and.to.deep.include(['_:user/d', 'rdf:object', '_:user/c'])
   })
 
   it('017.2 should support named expressions', () => {
@@ -245,15 +246,15 @@ describe('knowledge-parser', () => {
       .to.deep.include(['_:user/a', '_:user/e', '_:user/f'])
       .and.to.deep.include(['_:user/g', '_:user/h', '_:user/i'])
       .and.to.deep.include(['_:auto_expr/0', '_:user/j', '_:user/k'])
-      .and.to.deep.include(['_:user/d', 'stmt_reification:subject', '_:user/a'])
-      .and.to.deep.include(['_:user/d', 'stmt_reification:predicate', '_:user/b'])
-      .and.to.deep.include(['_:user/d', 'stmt_reification:object', '_:user/c'])
-      .and.to.deep.include(['_:user/g', 'stmt_reification:subject', '_:user/a'])
-      .and.to.deep.include(['_:user/g', 'stmt_reification:predicate', '_:user/e'])
-      .and.to.deep.include(['_:user/g', 'stmt_reification:object', '_:user/f'])
-      .and.to.deep.include(['_:user/l', 'stmt_reification:subject', '_:auto_expr/0'])
-      .and.to.deep.include(['_:user/l', 'stmt_reification:predicate', '_:user/j'])
-      .and.to.deep.include(['_:user/l', 'stmt_reification:object', '_:user/k'])
+      .and.to.deep.include(['_:user/d', 'rdf:subject', '_:user/a'])
+      .and.to.deep.include(['_:user/d', 'rdf:predicate', '_:user/b'])
+      .and.to.deep.include(['_:user/d', 'rdf:object', '_:user/c'])
+      .and.to.deep.include(['_:user/g', 'rdf:subject', '_:user/a'])
+      .and.to.deep.include(['_:user/g', 'rdf:predicate', '_:user/e'])
+      .and.to.deep.include(['_:user/g', 'rdf:object', '_:user/f'])
+      .and.to.deep.include(['_:user/l', 'rdf:subject', '_:auto_expr/0'])
+      .and.to.deep.include(['_:user/l', 'rdf:predicate', '_:user/j'])
+      .and.to.deep.include(['_:user/l', 'rdf:object', '_:user/k'])
   })
 
   it('018.0 should support descrptors as variables', () => {
