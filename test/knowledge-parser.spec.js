@@ -227,4 +227,32 @@ describe('knowledge-parser', () => {
       .and.to.deep.include(['user:b', 'user:d', 'user:e'])
       .and.to.deep.include(['user:b', 'user:d', 'user:f'])
   })
+
+  it('017.1 should support named expressions', () => {
+    expect(`a => b : c ! d`).parsed.statements
+      .to.deep.include(['user:a', 'user:b', 'user:c'])
+      .and.to.deep.include(['user:d', 'stmt_reification:subject', 'user:a'])
+      .and.to.deep.include(['user:d', 'stmt_reification:predicate', 'user:b'])
+      .and.to.deep.include(['user:d', 'stmt_reification:object', 'user:c'])
+  })
+
+  it('017.2 should support named expressions', () => {
+    expect(`a => (
+        b : c ! d
+        e : f ! g => h:i => j:k ! l
+      )`).parsed.statements
+      .to.deep.include(['user:a', 'user:b', 'user:c'])
+      .to.deep.include(['user:a', 'user:e', 'user:f'])
+      .and.to.deep.include(['user:g', 'user:h', 'user:i'])
+      .and.to.deep.include(['auto_expr:0', 'user:j', 'user:k'])
+      .and.to.deep.include(['user:d', 'stmt_reification:subject', 'user:a'])
+      .and.to.deep.include(['user:d', 'stmt_reification:predicate', 'user:b'])
+      .and.to.deep.include(['user:d', 'stmt_reification:object', 'user:c'])
+      .and.to.deep.include(['user:g', 'stmt_reification:subject', 'user:a'])
+      .and.to.deep.include(['user:g', 'stmt_reification:predicate', 'user:e'])
+      .and.to.deep.include(['user:g', 'stmt_reification:object', 'user:f'])
+      .and.to.deep.include(['user:l', 'stmt_reification:subject', 'auto_expr:0'])
+      .and.to.deep.include(['user:l', 'stmt_reification:predicate', 'user:j'])
+      .and.to.deep.include(['user:l', 'stmt_reification:object', 'user:k'])
+  })
 })

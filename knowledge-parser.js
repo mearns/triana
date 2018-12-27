@@ -37,14 +37,18 @@ class RdfDatabase {
     return id
   }
 
-  addReifiedStatement (subj, pred, obj, specified = null) {
-    const statementId = this.addStatement(subj, pred, obj, specified)
+  addReifiedStatement (id, subj, pred, obj, specified = null) {
+    if (id) {
+      this._add(id, subj, pred, obj, specified)
+    } else {
+      id = this.addStatement(subj, pred, obj, specified)
+    }
     const reifBaseId = `auto_reify:${this._nextReifId}`
     this._nextReifId++
-    this._add(`${reifBaseId}.s`, statementId, 'stmt_reification:subject', subj, specified)
-    this._add(`${reifBaseId}.p`, statementId, 'stmt_reification:predicate', pred, specified)
-    this._add(`${reifBaseId}.o`, statementId, 'stmt_reification:object', obj, specified)
-    return statementId
+    this._add(`${reifBaseId}.s`, id, 'stmt_reification:subject', subj, specified)
+    this._add(`${reifBaseId}.p`, id, 'stmt_reification:predicate', pred, specified)
+    this._add(`${reifBaseId}.o`, id, 'stmt_reification:object', obj, specified)
+    return id
   }
 
   _getNextEntId () {
@@ -106,9 +110,9 @@ function handleBySymbolId (symbol, context, handlerMap) {
 }
 
 function addPropertyToIdentifier (database, firstTokenSymbol, identifier, propertySymbol) {
-  if (propertySymbol.pendingProperties && propertySymbol.pendingProperties.length) {
-    const statementId = database.addReifiedStatement(identifier, propertySymbol.predicate, propertySymbol.object, firstTokenSymbol.lex)
-    propertySymbol.pendingProperties.forEach(pendingProp => {
+  if ((propertySymbol.pendingProperties && propertySymbol.pendingProperties.length) || propertySymbol.statementId) {
+    const statementId = database.addReifiedStatement(propertySymbol.statementId, identifier, propertySymbol.predicate, propertySymbol.object, firstTokenSymbol.lex)
+    ;(propertySymbol.pendingProperties || []).forEach(pendingProp => {
       addPropertyToIdentifier(database, pendingProp, statementId, pendingProp)
     })
     return [statementId]
@@ -123,6 +127,7 @@ function parseString (string) {
     .rule(/[a-zA-Z0-9_@&-]+/, acceptMatch('identifier'))
     .rule(/\s*=>\s*/, acceptWithOutValue('ARROW'))
     .rule(/\s*:\s*/, acceptWithOutValue('COLON'))
+    .rule(/\s*!\s*/, acceptWithOutValue('BANG'))
     .rule(/\s*\(\s*/, acceptWithOutValue('OPAREN'))
     .rule(/\s*\)\s*/, acceptWithOutValue('CPAREN'))
     .rule(/[\s;]+/, acceptMatch('TERMINATOR'))
@@ -202,11 +207,11 @@ function parseString (string) {
         }
       })
     })
-  parser.symbol('COLON', 60)
+  parser.symbol('COLON', 70)
     .led((left) => {
       const firstToken = parser.peek()
       expectSymbol(left, 'predicate for property (colon) operator', 'entities')
-      const right = parser.expression(60)
+      const right = parser.expression(70)
       expectSymbol(right, 'object for a property (colon) operator', 'entities')
       const properties = []
       left.ids.forEach(pred => {
@@ -220,6 +225,22 @@ function parseString (string) {
       return parser.create('descriptor', firstToken)
         .prop('properties', properties)
         .raw()
+    })
+  parser.symbol('BANG', 60)
+    .led((left) => {
+      expectSymbol(left, 'statement for labeling (bang) operator', 'descriptor')
+      if (left.properties.length !== 1) {
+        throw new SyntaxError(`Statement labeling can only target a single property, found ${left.properties.length}`)
+      }
+      const [targetProperty] = left.properties
+      const right = parser.expression(60)
+      expectSymbol(right, 'label for labeling (bang) operator', 'entities')
+      if (right.ids.length !== 1) {
+        throw new SyntaxError(`Statement labeling can only use a single entity, found ${right.ids.length}`)
+      }
+      const [labelId] = right.ids
+      targetProperty.statementId = labelId
+      return left
     })
 
   const program = parser.parse()
