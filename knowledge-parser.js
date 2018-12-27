@@ -45,7 +45,7 @@ class RdfDatabase {
   }
 
   addStatement (subj, pred, obj, specified = null) {
-    const id = `auto_expr:${this._nextExprId}`
+    const id = `_:auto_expr/${this._nextExprId}`
     this._nextExprId++
     this._add(id, subj, pred, obj, specified)
     return id
@@ -57,7 +57,7 @@ class RdfDatabase {
     } else {
       id = this.addStatement(subj, pred, obj, specified)
     }
-    const reifBaseId = `auto_reify:${this._nextReifId}`
+    const reifBaseId = `_:auto_reify/${this._nextReifId}`
     this._nextReifId++
     this._add(`${reifBaseId}.s`, id, 'stmt_reification:subject', subj, specified)
     this._add(`${reifBaseId}.p`, id, 'stmt_reification:predicate', pred, specified)
@@ -74,13 +74,23 @@ class RdfDatabase {
   createEntityIdentifier (userProvided) {
     if (userProvided) {
       if (/&/.test(userProvided)) {
-        return `uniq:${userProvided.replace(/&/g, () => this._getNextEntId())}`
+        return `_:uniq/${userProvided}/${this._getNextEntId()}`
       } else {
-        return `user:${userProvided}`
+        return `_:user/${userProvided}`
       }
     } else {
-      return `auto_ent:${this._getNextEntId}`
+      return `_:auto_ent/${this._getNextEntId}`
     }
+  }
+
+  toNQuads () {
+    return this._statements.map(ids => ids.map(id => {
+      const [ignore, prefix, label] = /([^:]+):(.*)/.exec(id)
+      switch (prefix) {
+        case 'user':
+          return `_:${label}`
+      }
+    }).join(' ') + '.').join('\n')
   }
 
   statements () {
