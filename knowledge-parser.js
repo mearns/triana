@@ -139,12 +139,16 @@ function addPropertyToIdentifier (database, firstTokenSymbol, identifier, proper
 
 function parseString (string) {
   const PN_CHARS_BASE = 'A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u02ff\u0370-\u037d\u037f-\u1fff\u200c\u200d\u2070-\u218f\u2c00-\u2fef\u3001-\ud7ff\uf900-\ufdcf\ufdf0-\ufffd'
+  const PN_CHARS_PLANE_1 = '[\uD800-\uDB7F][\uDC00-\uDFFF]'
   const BLANK_NODE_ANYWHERE = `_0-9${PN_CHARS_BASE}`
   const BLANK_NODE_TAIL_CHARS = `\u00b7\u0300-\u036f\u203f\u2040${BLANK_NODE_ANYWHERE}-`
   const BLANK_NODE_INNER_CHARS = `.${BLANK_NODE_TAIL_CHARS}`
   const DELIMETER_CHARS = ':=!()\\s;'
   const TERMINATOR_RE = `[${DELIMETER_CHARS}]|$`
-  const NAME_RE = `[${BLANK_NODE_ANYWHERE}](?:[${BLANK_NODE_INNER_CHARS}]*[${BLANK_NODE_TAIL_CHARS}])?(?=${TERMINATOR_RE})`
+  const NAME_INIT_RE = `(?:[${BLANK_NODE_ANYWHERE}]|${PN_CHARS_PLANE_1})`
+  const NAME_INNER_RE = `(?:[${BLANK_NODE_INNER_CHARS}]|${PN_CHARS_PLANE_1})`
+  const NAME_TAIL_RE = `(?:[${BLANK_NODE_TAIL_CHARS}]|${PN_CHARS_PLANE_1})`
+  const NAME_RE = `${NAME_INIT_RE}(?:${NAME_INNER_RE}*${NAME_TAIL_RE})?(?=${TERMINATOR_RE})`
   const lex = new Tokenizer()
     .rule(new RegExp('&?' + NAME_RE, 'u'), acceptMatch('identifier'))
     .rule(new RegExp(`&(?=${TERMINATOR_RE})`, 'u'), acceptMatch('identifier'))
