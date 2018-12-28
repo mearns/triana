@@ -143,13 +143,13 @@ describe('knowledge-parser', () => {
 
   it('009 should support creation of anonymous objects with automatic identifiers', () => {
     expect(`
-      abc&def&ghi => (
+      &abc => (
         a: b
         c: d
       )
     `).parsed.statements
-      .to.deep.include(['_:uniq/abc&def&ghi/0', '_:user/a', '_:user/b'])
-      .and.to.deep.include(['_:uniq/abc&def&ghi/0', '_:user/c', '_:user/d'])
+      .to.deep.include(['_:uniq/abc/0', '_:user/a', '_:user/b'])
+      .and.to.deep.include(['_:uniq/abc/0', '_:user/c', '_:user/d'])
   })
 
   it('010 should support using an anonymous object as a subject', () => {
@@ -159,10 +159,10 @@ describe('knowledge-parser', () => {
         c: d
       )) => ( e:f; g:h )
     `).parsed.statements
-      .to.deep.include(['_:uniq/&/0', '_:user/a', '_:user/b'])
-      .and.to.deep.include(['_:uniq/&/0', '_:user/c', '_:user/d'])
-      .and.to.deep.include(['_:uniq/&/0', '_:user/e', '_:user/f'])
-      .and.to.deep.include(['_:uniq/&/0', '_:user/g', '_:user/h'])
+      .to.deep.include(['_:uniq//0', '_:user/a', '_:user/b'])
+      .and.to.deep.include(['_:uniq//0', '_:user/c', '_:user/d'])
+      .and.to.deep.include(['_:uniq//0', '_:user/e', '_:user/f'])
+      .and.to.deep.include(['_:uniq//0', '_:user/g', '_:user/h'])
   })
 
   it('011 should support an anonymous object as an object', () => {
@@ -174,9 +174,9 @@ describe('knowledge-parser', () => {
         ))
       )
     `).parsed.statements
-      .to.deep.include(['_:uniq/&/0', '_:user/d', '_:user/e'])
-      .to.deep.include(['_:uniq/&/0', '_:user/f', '_:user/g'])
-      .to.deep.include(['_:user/a', '_:user/b', '_:uniq/&/0'])
+      .to.deep.include(['_:uniq//0', '_:user/d', '_:user/e'])
+      .to.deep.include(['_:uniq//0', '_:user/f', '_:user/g'])
+      .to.deep.include(['_:user/a', '_:user/b', '_:uniq//0'])
   })
 
   it('011.1 should support an anonymous object as a predicate', () => {
@@ -184,9 +184,9 @@ describe('knowledge-parser', () => {
       b: c
       d: e
     )): f`).parsed.statements
-      .to.deep.include(['_:user/a', '_:uniq/&/0', '_:user/f'])
-      .and.to.deep.include(['_:uniq/&/0', '_:user/b', '_:user/c'])
-      .and.to.deep.include(['_:uniq/&/0', '_:user/d', '_:user/e'])
+      .to.deep.include(['_:user/a', '_:uniq//0', '_:user/f'])
+      .and.to.deep.include(['_:uniq//0', '_:user/b', '_:user/c'])
+      .and.to.deep.include(['_:uniq//0', '_:user/d', '_:user/e'])
   })
 
   it('012 should automatically reify statements that are cited', () => {

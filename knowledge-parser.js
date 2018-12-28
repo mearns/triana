@@ -74,24 +74,14 @@ class RdfDatabase {
 
   createEntityIdentifier (userProvided) {
     if (userProvided) {
-      if (/&/.test(userProvided)) {
-        return `_:uniq/${userProvided}/${this._getNextEntId()}`
+      if (userProvided.startsWith('&')) {
+        return `_:uniq/${userProvided.substr(1)}/${this._getNextEntId()}`
       } else {
         return `_:user/${userProvided}`
       }
     } else {
-      return `_:auto_ent/${this._getNextEntId}`
+      return `_:auto_ent/${this._getNextEntId()}`
     }
-  }
-
-  toNQuads () {
-    return this._statements.map(ids => ids.map(id => {
-      const [ignore, prefix, label] = /([^:]+):(.*)/.exec(id)
-      switch (prefix) {
-        case 'user':
-          return `_:${label}`
-      }
-    }).join(' ') + '.').join('\n')
   }
 
   statements () {
@@ -148,18 +138,26 @@ function addPropertyToIdentifier (database, firstTokenSymbol, identifier, proper
 }
 
 function parseString (string) {
+  const PN_CHARS_BASE = 'A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u02ff\u0370-\u037d\u037f-\u1fff\u200c\u200d\u2070-\u218f\u2c00-\u2fef\u3001-\ud7ff\uf900-\ufdcf\ufdf0-\ufffd'
+  const BLANK_NODE_ANYWHERE = `_0-9${PN_CHARS_BASE}`
+  const BLANK_NODE_TAIL_CHARS = `\u00b7\u0300-\u036f\u203f\u2040${BLANK_NODE_ANYWHERE}-`
+  const BLANK_NODE_INNER_CHARS = `.${BLANK_NODE_TAIL_CHARS}`
+  const DELIMETER_CHARS = ':=!()\\s;'
+  const TERMINATOR_RE = `[${DELIMETER_CHARS}]|$`
+  const NAME_RE = `[${BLANK_NODE_ANYWHERE}](?:[${BLANK_NODE_INNER_CHARS}]*[${BLANK_NODE_TAIL_CHARS}])?(?=${TERMINATOR_RE})`
   const lex = new Tokenizer()
-    .rule(/[a-zA-Z0-9_&-]+/, acceptMatch('identifier'))
-    .rule(/@([a-zA-Z0-9_&-]+)/, acceptMatch('variableName', 1))
-    .rule(/\*([a-zA-Z0-9_&-]+)/, acceptMatch('variableRef', 1))
-    .rule(/\s*=>\s*/, acceptWithOutValue('ARROW'))
+    .rule(new RegExp('&?' + NAME_RE, 'u'), acceptMatch('identifier'))
+    .rule(new RegExp(`&(?=${TERMINATOR_RE})`, 'u'), acceptMatch('identifier'))
+    .rule(new RegExp('@(' + NAME_RE + ')', 'u'), acceptMatch('variableName', 1))
+    .rule(new RegExp('\\*(' + NAME_RE + ')', 'u'), acceptMatch('variableRef', 1))
     .rule(/\s*:=\s*/, acceptWithOutValue('ASSIGNMENT'))
+    .rule(/\s*=>\s*/, acceptWithOutValue('ARROW'))
     .rule(/\s*:\s*/, acceptWithOutValue('COLON'))
     .rule(/\s*!\s*/, acceptWithOutValue('BANG'))
     .rule(/\s*\(\s*/, acceptWithOutValue('OPAREN'))
     .rule(/\s*\)\s*/, acceptWithOutValue('CPAREN'))
     .rule(/[\s;]+/, acceptMatch('TERMINATOR'))
-    .debug(false)
+    .debug(process.env.DEBUG)
     .input(string)
 
   const database = new RdfDatabase()
